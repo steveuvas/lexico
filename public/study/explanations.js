@@ -1,5 +1,3 @@
-let explainOnCheck = null;
-
 const grammarGuides = {
   'prep:place': ['Спросите «где?». Глагол vivir описывает место жительства, а не движение. Перед названием города нужен en.', 'Vivo en Madrid, pero voy a Toledo.', 'Я живу в Мадриде, но еду в Толедо.'],
   'prep:direction': ['Спросите «куда?». После ir пункт назначения вводится предлогом a. Предлог en отвечал бы на другой вопрос: «где?» или «на чём?».', 'Voy a Madrid en tren.', 'Я еду в Мадрид на поезде.'],
@@ -161,24 +159,39 @@ function answerGuides(q) {
   if(w)return [wordGuide(w)];
   return [{title:q.answers[0],points:[q.explanation||q.translation]}];
 }
+function detailLabel(q) {
+  return q.type==='pair'?'Разбор пар':q.wordId!=null?'Подробнее о слове':'Полное правило';
+}
+function briefExplanation(q) {
+  if(q.type==='multi')return tenseNotes[q.prompt]||q.translation;
+  if(q.type==='pair'){
+    const word=q.pairs.find(w=>currentRun.log.some(e=>e.step===currentRun.pos&&e.target===`pair:${w.id}`&&!['good','hard'].includes(e.kind)))||q.pairs[0];
+    const g=wordGuide(word);
+    return `${g.title}. ${g.points[0]}`;
+  }
+  const [family,key,i]=q.id.replace(/^recognize:/,'').split(':');
+  if(family==='verb'&&Object.hasOwn(verbRules,key))return verbRules[key][i];
+  if(q.wordId!=null){const w=lookup(q.wordId);if(w)return wordGuide(w).points[0]}
+  return q.explanation||q.translation;
+}
 function guideMarkup(g) {
   return `<section class="guide-item"><h3>${esc(g.title)}</h3>${g.points.map(text=>`<p>${esc(text)}</p>`).join('')}${g.example?`<div class="guide-example"><span lang="es">${esc(g.example[0])}</span>${g.example[1]?`<span>${esc(g.example[1])}</span>`:''}</div>`:''}</section>`;
 }
 function showExplanation(q, step=currentRun.pos) {
   const answers=currentRun.log.filter(e=>e.step===step&&e.answer&&!['good','hard'].includes(e.kind)&&(q.type==='multi'||q.type==='pair'||e.target===q.id));
   const comparison=answers.map(e=>`<p class="guide-contrast">Ваш ответ: <strong>${esc(e.answer)}</strong>. Здесь нужно: <strong>${esc(e.expected)}</strong>.${e.kind==='accent'?' Обратите внимание на знак ударения.':e.kind==='article'?' Сверьте артикль перед существительным.':''}</p>`).join('');
-  popup('Разбор ответа',`<div class="answer-guide">${comparison}${answerGuides(q).map(guideMarkup).join('')}</div><div class="format-actions"><button class="primary" data-act="close">${currentRun.done?'К итогам':'К заданию'} ${ic('arrow')}</button></div>`);
+  const topic=topicRuleMarkup(q);
+  const guides=answerGuides(q);
+  const examples=q.type==='multi'&&topic?guides.slice(0,1):guides;
+  popup(detailLabel(q),`<div class="answer-guide">${comparison}${examples.map(guideMarkup).join('')}${topic}</div><div class="format-actions"><button class="primary" data-act="close">${currentRun.done?'К итогам':'К заданию'} ${ic('arrow')}</button></div>`);
   modal.scrollTop=0;
 }
 function explainCurrent() {
-  const r=currentRun,q=r.q[r.pos];
-  if(r.step.checked)return showExplanation(q);
-  popup('Открыть ответ с разбором?',`<p class="explain-confirm">Вы увидите правильный ответ и объяснение. ${q.correction?'Это уже повтор: интервал не изменится.':q.type==='pair'?'Незаконченные пары попадут на повтор. Уже найденные сохранят свой результат.':'Задание попадёт на повтор и не будет засчитано как самостоятельный ответ.'}</p><div class="format-actions"><button class="primary" data-act="confirm-explanation">Открыть разбор</button><button class="link" data-act="close">Попробовать самому</button></div>`);
-}
-function confirmExplanation() {
   const r=currentRun;if(!r||r.done||r.step.checked)return;
-  explainOnCheck=r.q[r.pos].episode;closePop();
   if(cloud.user)onlineAnswer(true);else submitAnswer(true);
+}
+function openCurrentRule() {
+  const r=currentRun;if(r&&!r.done&&r.step.checked)showExplanation(r.q[r.pos]);
 }
 function explainReview(step,target) {
   const q=currentRun?.q[step];if(!q||!currentRun.done)return;
