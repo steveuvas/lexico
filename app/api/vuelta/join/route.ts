@@ -1,0 +1,4 @@
+import {createClient} from '@/lib/supabase/server'
+import {cookies} from 'next/headers'
+import {readBody,json,fail} from '@/lib/vuelta-http'
+export async function POST(req:Request){try{const body=await readBody(req,512),jar=await cookies(),token=body.token??jar.get('vuelta-invite')?.value;if(typeof token!=='string'||!/^[0-9a-f]{64}$/.test(token))return json({error:'Неверная ссылка приглашения.'},400);const db=await createClient();const {data:{user}}=await db.auth.getUser();if(!user){jar.set('vuelta-invite',token,{httpOnly:true,secure:true,sameSite:'none',path:'/',maxAge:172800});return json({login:true})}const {error}=await db.rpc('vuelta_join',{t:token});if(error)return json({error:'Приглашение уже использовано или истекло. Попросите новую ссылку.'},409);jar.delete('vuelta-invite');return json({joined:true})}catch(e){return fail(e)}}
