@@ -37,9 +37,9 @@ const tenseNotes = {
 };
 function topicRuleMarkup(q) {
   const [family,key]=q.id.replace(/^recognize:/,'').split(':');
-  if((family==='verb'||family==='table')&&Object.hasOwn(tenseNotes,key)){
-    const rows=tables[key].map((form,i)=>`<tr><th scope="row" lang="es">${esc(persons[i])}</th><td lang="es">${esc(form)}</td></tr>`).join('');
-    return `<section class="rule-lesson"><h3>${esc(key)} · Presente de indicativo</h3><p>${esc(tenseNotes[key])}</p><table class="rule-table"><caption class="sr">Формы ${esc(key)} в настоящем времени</caption><thead><tr><th scope="col">Кто?</th><th scope="col">Форма</th></tr></thead><tbody>${rows}</tbody></table><p class="rule-note">Местоимение можно опустить, если из контекста понятно, кто действует. Форма глагола при этом не меняется.</p></section>`;
+  if((family==='verb'||family==='table')&&curriculum.has(key)){
+    const rows=curriculum.forms(key).map((form,i)=>`<tr><th scope="row" lang="es">${esc(persons[i])}</th><td lang="es">${esc(form)}</td></tr>`).join('');
+    return `<section class="rule-lesson"><h3>${esc(key)} · Presente de indicativo</h3><p>${esc(tenseNotes[key]||curriculum.formNote(key))}</p><table class="rule-table"><caption class="sr">Формы ${esc(key)} в настоящем времени</caption><thead><tr><th scope="col">Кто?</th><th scope="col">Форма</th></tr></thead><tbody>${rows}</tbody></table><p class="rule-note">Местоимение можно опустить, если из контекста понятно, кто действует. Форма глагола при этом не меняется.</p></section>`;
   }
   const lesson=family==='prep'?ruleLessons[prepLessonKeys[key]]:family==='poss'?ruleLessons.possessive:q.id==='phrase:sed'?ruleLessons.sed:null;
   if(!lesson)return '';

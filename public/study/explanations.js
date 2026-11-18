@@ -152,8 +152,9 @@ function answerGuides(q) {
   if(q.type==='pair')return q.pairs.map(wordGuide);
   const id=q.id.replace(/^recognize:/,''), [,v,place]=id.split(':');
   if(id.startsWith('verb:')&&Object.hasOwn(verbRules,v)&&verbRules[v][place])return [formGuide(q,v,Number(place))];
+  if(id.startsWith('verb:')&&curriculum.has(v))return [{title:q.prompt.replace('___',q.answers[0]),points:[q.explanation]}];
   const grammar=grammarGuides[id];
-  if(grammar){let sentence=q.prompt.replace('___',q.answers[0]);sentence=sentence[0].toUpperCase()+sentence.slice(1);return [{title:sentence,points:[grammar[0]],example:grammar.slice(1)}]}
+  if(grammar){let sentence=q.prompt.replace('___',q.answers[0]);sentence=sentence[0].toUpperCase()+sentence.slice(1);return [{title:sentence,points:[q.prompt===q.alt?curriculum.contextNote(q):grammar[0]],example:q.prompt===q.alt?[sentence,q.translation]:grammar.slice(1)}]}
   if(id==='phrase:sed')return [{title:'Tengo sed.',points:['По-испански жажду выражают сочетанием tener sed: буквально «иметь жажду». Это состояние, а не действие beber («пить»).','Для «я» глагол tener принимает форму tengo. Местоимение yo можно опустить: форма уже показывает, кто говорит. Оба ответа — Tengo sed и Yo tengo sed — верны.'],example:['Tengo sed, ¿me das agua?','Я хочу пить, дашь мне воды?']}];
   const w=q.wordId!=null&&lookup(q.wordId);
   if(w)return [wordGuide(w)];
@@ -163,7 +164,7 @@ function detailLabel(q) {
   return q.type==='pair'?'Разбор пар':q.wordId!=null?'Подробнее о слове':'Полное правило';
 }
 function briefExplanation(q) {
-  if(q.type==='multi')return tenseNotes[q.prompt]||q.translation;
+  if(q.type==='multi')return tenseNotes[q.prompt]||(curriculum.has(q.prompt)?curriculum.formNote(q.prompt):q.translation);
   if(q.type==='pair'){
     const word=q.pairs.find(w=>currentRun.log.some(e=>e.step===currentRun.pos&&e.target===`pair:${w.id}`&&!['good','hard'].includes(e.kind)))||q.pairs[0];
     const g=wordGuide(word);
@@ -172,7 +173,7 @@ function briefExplanation(q) {
   const [family,key,i]=q.id.replace(/^recognize:/,'').split(':');
   if(family==='verb'&&Object.hasOwn(verbRules,key))return verbRules[key][i];
   if(q.wordId!=null){const w=lookup(q.wordId);if(w)return wordGuide(w).points[0]}
-  return q.explanation||q.translation;
+  return curriculum.contextNote(q)||q.translation;
 }
 function guideMarkup(g) {
   return `<section class="guide-item"><h3>${esc(g.title)}</h3>${g.points.map(text=>`<p>${esc(text)}</p>`).join('')}${g.example?`<div class="guide-example"><span lang="es">${esc(g.example[0])}</span>${g.example[1]?`<span>${esc(g.example[1])}</span>`:''}</div>`:''}</section>`;
@@ -185,10 +186,6 @@ function showExplanation(q, step=currentRun.pos) {
   const examples=q.type==='multi'&&topic?guides.slice(0,1):guides;
   popup(detailLabel(q),`<div class="answer-guide">${comparison}${examples.map(guideMarkup).join('')}${topic}</div><div class="format-actions"><button class="primary" data-act="close">${currentRun.done?'К итогам':'К заданию'} ${ic('arrow')}</button></div>`);
   modal.scrollTop=0;
-}
-function explainCurrent() {
-  const r=currentRun;if(!r||r.done||r.step.checked)return;
-  if(cloud.user)onlineAnswer(true);else submitAnswer(true);
 }
 function openCurrentRule() {
   const r=currentRun;if(r&&!r.done&&r.step.checked)showExplanation(r.q[r.pos]);
